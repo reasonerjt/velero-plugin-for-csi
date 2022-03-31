@@ -61,10 +61,11 @@ func (p *VolumeSnapshotContentDeleteItemAction) Execute(input *velero.DeleteItem
 	}
 
 	err = snapClient.SnapshotV1beta1().VolumeSnapshotContents().Delete(context.TODO(), snapCont.Name, metav1.DeleteOptions{})
-	if err != nil && !apierrors.IsNotFound(err) {
-		p.Log.Infof("VolumeSnapshotContent %s not found", snapCont.Name)
-		return err
+	if err != nil {
+		p.Log.Infof("failed to delete VolumeSnapshotContent %s, error: %v ", snapCont.Name, err)
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
 	}
-
 	return nil
 }

@@ -19,8 +19,10 @@ package backup
 import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	snapshotv1beta1api "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1beta1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
@@ -66,6 +68,23 @@ func (p *VolumeSnapshotContentBackupItemAction) Execute(item runtime.Unstructure
 		})
 	}
 
+	// Currently the volumecontentsnapshot in the backup tarball will not be used for creating the resource
+	// But for consistency it will make the modification
+	// TODO: call the function in module github.com/vmware-tanzu/velero once it is tagged
+	if snapCont.Status != nil && snapCont.Status.SnapshotHandle != nil && len(*snapCont.Status.SnapshotHandle) > 0 {
+		v := *snapCont.Status.SnapshotHandle
+		snapCont.Spec.Source = snapshotv1beta1api.VolumeSnapshotContentSource{
+			SnapshotHandle: &v,
+		}
+	}
+	snapCont.Spec.VolumeSnapshotRef = corev1.ObjectReference{}
+	p.Log.Infof("Reset VolumeSnapshotRef for volumesnapshotcontent %s", snapCont.Name)
+	m, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&snapCont)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "error converting volumesnapshotcontent %s to unstructured", snapCont.Name)
+	}
 	p.Log.Infof("Returning from VolumeSnapshotContentBackupItemAction with %d additionalItems to backup", len(additionalItems))
+	item = &unstructured.Unstructured{Object: m}
+
 	return item, additionalItems, nil
 }
