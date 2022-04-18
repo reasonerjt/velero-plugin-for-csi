@@ -17,11 +17,11 @@ limitations under the License.
 package backup
 
 import (
+	snapshotv1api "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	snapshotv1beta1api "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -51,7 +51,7 @@ func (p *VolumeSnapshotContentBackupItemAction) AppliesTo() (velero.ResourceSele
 func (p *VolumeSnapshotContentBackupItemAction) Execute(item runtime.Unstructured, backup *velerov1api.Backup) (runtime.Unstructured, []velero.ResourceIdentifier, error) {
 	p.Log.Infof("Executing VolumeSnapshotContentBackupItemAction")
 
-	var snapCont snapshotv1beta1api.VolumeSnapshotContent
+	var snapCont snapshotv1api.VolumeSnapshotContent
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(item.UnstructuredContent(), &snapCont); err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
@@ -68,12 +68,12 @@ func (p *VolumeSnapshotContentBackupItemAction) Execute(item runtime.Unstructure
 		})
 	}
 
-	// Currently the volumecontentsnapshot in the backup tarball will not be used for creating the resource
+	// Currently the volumesnapshotcontent in the backup tarball will not be used for creating the resource
 	// But for consistency it will make the modification
 	// TODO: call the function in module github.com/vmware-tanzu/velero once it is tagged
 	if snapCont.Status != nil && snapCont.Status.SnapshotHandle != nil && len(*snapCont.Status.SnapshotHandle) > 0 {
 		v := *snapCont.Status.SnapshotHandle
-		snapCont.Spec.Source = snapshotv1beta1api.VolumeSnapshotContentSource{
+		snapCont.Spec.Source = snapshotv1api.VolumeSnapshotContentSource{
 			SnapshotHandle: &v,
 		}
 	}
